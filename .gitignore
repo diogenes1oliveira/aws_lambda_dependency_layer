@@ -102,3 +102,7 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# IDE and File Manager stuff
+.vscode/
+.directory

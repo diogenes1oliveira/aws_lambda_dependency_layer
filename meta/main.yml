@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  author: Diógenes Oliveira
+  description: DevOps Engineer
+
+  license: MIT
+
+  min_ansible_version: 1.2
+
+  platforms:
+    - name: Linux
+      versions:
+        - all
+
+  galaxy_tags:
+    - lambda
+    - aws
+
+dependencies: []
