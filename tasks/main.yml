@@ -1,2 +1,6 @@
 ---
 # tasks/main
+
+- name: empty task
+  ping:
+    data: pong

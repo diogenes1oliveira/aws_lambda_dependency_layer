@@ -4,7 +4,7 @@ Ansible role to build and deploy a Lambda layer bundled with the dependencies fo
 
 ## Requirements
 
-Requires the following PIP libraries to be installed in the control node:
+Requires `python3.7` and the following PIP libraries to be installed in the control node:
 
 - ansible ~= 2.7
 - boto3 ~= 1.9
