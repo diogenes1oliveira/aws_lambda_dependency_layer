@@ -1,10 +1,12 @@
 # lambda-dependency-layer
 
-Ansible role to build and deploy a Lambda layer bundled with the dependencies for a given runtime
+Ansible role to build and deploy a Lambda layer bundled with the dependencies
+for a given runtime.
 
 ## Requirements
 
-Requires `python3.7` and the following PIP libraries to be installed in the control node:
+Requires `python3.7` and the following PIP libraries to be installed in the
+control node:
 
 - ansible ~= 2.7
 - boto3 ~= 1.9
@@ -12,12 +14,21 @@ Requires `python3.7` and the following PIP libraries to be installed in the cont
 
 ## Role Variables
 
-| Variable | Description                              | Default value |
-| -------- | ---------------------------------------- | ------------- |
-| state    | `absent` or `present`                    | `present`     |
-| name     | name of the Lambda layer to be published | (required)    |
-| runtime  | valid AWS Lambda runtime                 | `ruby2.5`     |
-| files    | files with the dependency specs          | (required)    |
+| Variable   | Description                              | Default value |
+| ---------- | ---------------------------------------- | ------------- |
+| state      | `absent` or `present`                    | `present`     |
+| name       | name of the Lambda layer to be published | (required)    |
+| runtime    | valid AWS Lambda runtime                 | `ruby2.5`     |
+| context    | path to the build context                | (required)    |
+| bucket     | bucket where to store the resulting ZIP  | (required)    |
+| object_key | key of the ZIP in S3                     | (required)    |
+
+The build context must contain the files with the dependencies specifications
+for each runtime, according to the table below:
+
+| Runtime   | File specs                |
+| --------- | ------------------------- |
+| `ruby2.5` | `Gemfile`, `Gemfile.lock` |
 
 ## Dependencies
 
@@ -36,9 +47,7 @@ The following variables are exported:
 - hosts: localhost
   roles:
     - role: lambda-dependency-layer
-      files:
-        - Gemfile
-        - Gemfile.lock
+      path: .
       runtime: ruby2.5
 ```
 

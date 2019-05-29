@@ -1,6 +1,46 @@
 ---
 # tasks/main
 
-- name: empty task
-  ping:
-    data: pong
+- name: Check if the image already exists
+  layer_search:
+    name: "{{ name }}"
+  register: layer
+
+- name: Build the Docker image with the dependencies bundled in
+  docker_image:
+    source: build
+    state: present
+    force_tag: true
+    name: "temp-lambda-image-{{ name }}"
+    build:
+      path: "{{ context }}"
+      dockerfile: "{{ role_path }}/runtimes/{{ runtime }}/Dockerfile"
+
+- name: Create a temporary directory
+  tempfile:
+    state: directory
+  register: tempdir
+  changed_when: false
+
+- name: Copy the layer contents to the temporary directory
+  docker_container:
+    name: "temp-lambda-container-{{ name }}"
+    image: "temp-lambda-image-{{ name }}"
+    state: started
+    command: cp /layer.zip /mnt/layer.zip
+    cleanup: true
+    volumes:
+      - "{{ tempdir.path }}:/mnt"
+  changed_when: false
+
+- name: Publish the layer
+  aws_lambda_layer:
+    name: "{{ name }}"
+
+- name: Upload it to S3
+  aws_s3:
+    bucket: "{{ bucket }}"
+    mode: put
+    object: "{{ object_key }}"
+    src: "{{ tempdir.path }}/layer.zip"
+    overwrite: different

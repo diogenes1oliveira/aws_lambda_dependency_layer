@@ -1,0 +1,19 @@
+---
+- name: Gather a few facts
+  setup:
+  no_log: true
+
+- name: Generate the temporary suffix
+  set_fact:
+    temp_suffix: >-
+      {{ (
+        'very-secret' |
+        password_hash('md5', 65534 | random(seed=ansible_machine_id) | string) |
+        hash('md5') |
+        replace('-', '')
+      )[:10] }}
+
+- name: Save it to Molecule's temporary directory
+  copy:
+    content: "{{ temp_suffix }}"
+    dest: "{{ molecule_ephemeral_directory }}/temp-suffix.txt"

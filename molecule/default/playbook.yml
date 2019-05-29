@@ -7,6 +7,19 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
 
   tasks:
-    - name: gather-facts
-      setup:
-      no_log: true
+    - include_tasks: generate-suffix.yml
+
+    - name: Assure the temporary bucket exists
+      s3_bucket:
+        name: "temp-bucket-{{ temp_suffix }}"
+        state: present
+
+    - include_role:
+        name: lambda-dependency-layer
+      vars:
+        name: "test-layer-{{ temp_suffix }}"
+        state: present
+        context: ./tests/sample-data/ruby2.5
+        runtime: ruby2.5
+        bucket: "temp-bucket-{{ temp_suffix }}"
+        object_key: layer.zip

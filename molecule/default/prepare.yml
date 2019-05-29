@@ -1,0 +1,12 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - include_tasks: generate-suffix.yml
+
+    - name: Create the temporary bucket
+      s3_bucket:
+        name: "temp-bucket-{{ temp_suffix }}"
+        state: present
