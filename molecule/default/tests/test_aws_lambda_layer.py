@@ -1,12 +1,15 @@
+from contextlib import ExitStack
 import logging
 import os
-import sys
 from uuid import uuid4
 from zipfile import ZipFile
 
-LOGGER = logging.getLogger(__file__)
+from aws_lambda_layer import (
+    destroy_layer, get_layer_version_info, manage_lambda_layer
+)
+
+LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(os.getenv('LOGGING_LEVEL') or logging.INFO)
-MY_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
 def create_zip(path, suffix):
@@ -24,14 +27,9 @@ def test_layer_creation(temp_bucket, tmp_path):
     path = str(tmp_path / 'layer.zip')
     create_zip(path, suffix)
 
-    # Import the library
-    library_path = os.path.join(os.path.dirname(MY_PATH), 'library')
-    if sys.path[0] != library_path:
-        sys.path.insert(0, library_path)
-    from aws_lambda_layer import manage_lambda_layer, get_layer_version_info
-
-    with temp_bucket() as bucket:
-        state = 'present'
+    with ExitStack() as stack:
+        bucket = stack.enter_context(temp_bucket())
+        stack.callback(destroy_layer, name)
         # First deployed version
         result1 = manage_lambda_layer(
             name, bucket, object_key, None, path, 'present')
@@ -54,13 +52,22 @@ def test_layer_creation(temp_bucket, tmp_path):
         assert result3['downloaded']
 
         # Deploying a different bundle
-        create_zip(path, suffix)
+        create_zip(path, suffix + 'other-suffix')
         result4 = manage_lambda_layer(
             name, bucket, object_key, None, path, 'present')
-        assert result4['version_arn'] == result1['version_arn']
-        assert result1['version_checksum'] == result4['version_checksum']
-        assert not result4['changed']
+        assert result4['version_arn'] != result1['version_arn']
+        assert result1['version_checksum'] != result4['version_checksum']
+        assert result4['changed']
         assert not result4['downloaded']
+
+        # Redeploying the previous one
+        create_zip(path, suffix)
+        result5 = manage_lambda_layer(
+            name, bucket, object_key, None, path, 'present')
+        assert result5['version_arn'] == result1['version_arn']
+        assert result1['version_checksum'] == result5['version_checksum']
+        assert result5['changed']
+        assert not result5['downloaded']
 
         assert get_layer_version_info(name)
         manage_lambda_layer(name, None, None, None, None, 'absent')

@@ -23,3 +23,9 @@
         runtime: ruby2.5
         bucket: "temp-bucket-{{ temp_suffix }}"
         object_key: layer.zip
+
+    - name: Save the exported variables
+      copy:
+        content: "{{ hostvars[inventory_hostname] | to_json }}"
+        dest: "{{ molecule_ephemeral_directory }}/role-variables-main.json"
+      changed_when: false

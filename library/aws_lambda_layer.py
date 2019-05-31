@@ -19,7 +19,7 @@ from zipfile import ZipFile
 from ansible.module_utils.basic import AnsibleModule
 import boto3
 
-LOGGER = logging.getLogger(__file__)
+LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(os.getenv('LOGGING_LEVEL') or logging.INFO)
 
 
@@ -178,23 +178,32 @@ def upload_file(path, bucket, object_key, checksum=None, metadata='sha256'):
         return obj.get('VersionId', '') or None
 
 
-def get_layer_version_info(name, lambda_client=None):
+def get_layer_version_info(name, local_checksum=None, lambda_client=None):
     """
     Returns info (via lambda_client.get_layer_version) of the last layer version
     with the given name.
     """
     lambda_client = lambda_client or boto3.client('lambda')
-    versions = set()
+    all_versions = set()
 
     response = lambda_client.list_layer_versions(LayerName=name)
-    versions |= {v['Version'] for v in response['LayerVersions']}
+    all_versions |= {v['Version'] for v in response['LayerVersions']}
     marker = response.get('NextMarker', None)
 
     while marker:
         response = lambda_client.list_layer_versions(
             LayerName=name, NextMarker=marker)
-        versions |= {v['Version'] for v in response['LayerVersions']}
+        all_versions |= {v['Version'] for v in response['LayerVersions']}
         marker = response.get('NextMarker', None)
+
+    versions = []
+    for version_number in all_versions:
+        version = lambda_client.get_layer_version(
+            LayerName=name,
+            VersionNumber=version_number,
+        )
+        if not local_checksum or local_checksum == version['Content']['CodeSha256']:
+            versions.append(version_number)
 
     try:
         last_version = max(versions)
@@ -229,7 +238,7 @@ def destroy_layer(name, lambda_client=None):
             VersionNumber=version,
         )
 
-    return
+    return bool(versions)
 
 
 def manage_lambda_layer(name, bucket, object_key, object_version, path, state, metadata='sha256'):
@@ -237,7 +246,9 @@ def manage_lambda_layer(name, bucket, object_key, object_version, path, state, m
         changed=False,
     )
     lambda_client = boto3.client('lambda')
-    layer = get_layer_version_info(name, lambda_client)
+    local_checksum = state == 'absent' or get_file_checksum(path)
+    layer = get_layer_version_info(name, local_checksum, lambda_client)
+
     LOGGER.info('bool(get_layer_version_info): %s', bool(layer))
     if layer:
         result['arn'] = layer['LayerArn']
@@ -249,6 +260,7 @@ def manage_lambda_layer(name, bucket, object_key, object_version, path, state, m
             destroy_layer(name, lambda_client)
             return result
     elif state == 'absent':
+        result['changed'] = destroy_layer(name, lambda_client)
         return result
 
     s3_checksum, downloaded = fetch_s3_checksum(

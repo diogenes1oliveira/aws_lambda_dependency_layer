@@ -1,0 +1,36 @@
+---
+- name: Side-effects
+  hosts: all
+  gather_facts: false
+
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+
+  tasks:
+    - include_tasks: generate-suffix.yml
+
+    - include_role:
+        name: lambda-dependency-layer
+      vars:
+        name: "temp-layer-2-{{ temp_suffix }}"
+        state: present
+        context: ./tests/sample-data/ruby2.5
+        runtime: ruby2.5
+        bucket: "temp-bucket-{{ temp_suffix }}"
+        object_key: layer-2.zip
+
+    - name: Save the exported variables
+      copy:
+        content: "{{ hostvars[inventory_hostname] | to_json }}"
+        dest: "{{ molecule_ephemeral_directory }}/role-variables-side-effects-present.json"
+
+    - include_role:
+        name: lambda-dependency-layer
+      vars:
+        name: "temp-layer-2-{{ temp_suffix }}"
+        state: absent
+
+    - name: Save the exported variables
+      copy:
+        content: "{{ hostvars[inventory_hostname] | to_json }}"
+        dest: "{{ molecule_ephemeral_directory }}/role-variables-side-effects-absent.json"

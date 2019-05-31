@@ -6,37 +6,66 @@
     name: "{{ name }}"
   register: layer
 
-- name: Build the Docker image with the dependencies bundled in
-  docker_image:
-    source: build
-    state: present
-    force_tag: true
-    name: "temp-lambda-image-{{ name }}"
-    build:
-      path: "{{ context }}"
-      dockerfile: "{{ role_path }}/runtimes/{{ runtime }}/Dockerfile"
+- name: Destroy the layer if requested so
+  when: state == 'absent'
+  block:
+    - name: Destroy the layer
+      aws_lambda_layer:
+        name: "{{ name }}"
+        state: absent
 
-- name: Create a temporary directory
-  tempfile:
-    state: directory
-  register: tempdir
-  changed_when: false
+    - name: Export the variables
+      set_fact:
+        aws_lambda_dependency_layer_arn:
+        aws_lambda_dependency_layer_version:
+        aws_lambda_dependency_layer_version_arn:
 
-- name: Copy the layer contents to the temporary directory
-  docker_container:
-    name: "temp-lambda-container-{{ name }}"
-    image: "temp-lambda-image-{{ name }}"
-    state: started
-    command: cp /layer.zip /mnt/layer.zip
-    cleanup: true
-    volumes:
-      - "{{ tempdir.path }}:/mnt"
-  changed_when: false
+- name: Export the state
+  set_fact:
+    aws_lambda_dependency_layer_name: "{{ name }}"
+    aws_lambda_dependency_layer_state: "{{ state }}"
 
-- name: Publish the layer
-  aws_lambda_layer:
-    name: "{{ name }}"
-    state: present
-    path: "{{ tempdir.path }}/layer.zip"
-    bucket: "{{ bucket }}"
-    object_key: "{{ object_key }}"
+- name: Deploy the layer if requested so
+  when: state == 'present'
+  block:
+    - name: Build the Docker image with the dependencies bundled in
+      docker_image:
+        source: build
+        state: present
+        force_tag: true
+        name: "temp-lambda-image-{{ name }}"
+        build:
+          path: "{{ context }}"
+          dockerfile: "{{ role_path }}/runtimes/{{ runtime }}/Dockerfile"
+
+    - name: Create a temporary directory
+      tempfile:
+        state: directory
+      register: tempdir
+      changed_when: false
+
+    - name: Copy the layer contents to the temporary directory
+      docker_container:
+        name: "temp-lambda-container-{{ name }}"
+        image: "temp-lambda-image-{{ name }}"
+        state: started
+        command: cp /layer.zip /mnt/layer.zip
+        cleanup: true
+        volumes:
+          - "{{ tempdir.path }}:/mnt"
+      changed_when: false
+
+    - name: Publish the layer
+      aws_lambda_layer:
+        name: "{{ name }}"
+        state: present
+        path: "{{ tempdir.path }}/layer.zip"
+        bucket: "{{ bucket }}"
+        object_key: "{{ object_key }}"
+      register: lambda_layer
+
+    - name: Export the published version
+      set_fact:
+        aws_lambda_dependency_layer_arn: "{{ lambda_layer.arn }}"
+        aws_lambda_dependency_layer_version: "{{ lambda_layer.version | string }}"
+        aws_lambda_dependency_layer_version_arn: "{{ lambda_layer.version_arn }}"

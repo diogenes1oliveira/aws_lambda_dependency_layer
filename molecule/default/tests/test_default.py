@@ -15,13 +15,15 @@ LOGGER.setLevel(os.getenv('LOGGING_LEVEL') or logging.INFO)
 MY_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
-def get_temp_suffix():
-    temp_path = os.getenv(
+def get_temp_path():
+    return os.getenv(
         'MOLECULE_EPHEMERAL_DIRECTORY',
         '/tmp/molecule/lambda-dependency-layer/default/',
     )
 
-    with open(os.path.join(temp_path, 'temp-suffix.txt')) as fp:
+
+def get_temp_suffix():
+    with open(os.path.join(get_temp_path(), 'temp-suffix.txt')) as fp:
         return fp.read().strip()
 
 
@@ -45,36 +47,6 @@ def upload_sample_bundle(bucket):
     return object_key
 
 
-def destroy_function(function_name, lambda_client=None):
-    lambda_client = lambda_client or boto3.client('lambda')
-
-    def destroy_function_versions(versions):
-        for v in versions:
-            if v['Version'] == '$LATEST':
-                continue
-            LOGGER.info('Destroying version %s of function %s', v['Version'], function_name)
-            lambda_client.delete_function(
-                FunctionName=function_name,
-                Qualifier=v['Version'],
-            )
-
-    response = lambda_client.list_versions_by_function(FunctionName=function_name)
-    destroy_function_versions(response.get('Versions', []))
-    while response.get('NextMarker', None):
-        response = lambda_client.list_versions_by_function(
-            FunctionName=function_name,
-            Marker=response['NextMarker'],
-        )
-        destroy_function_versions(response.get('Versions', []))
-
-    import pytest
-    pytest.set_trace()
-    lambda_client.delete_function(
-        FunctionName=function_name,
-        Qualifier='$LATEST',
-    )
-
-
 def test_layer_deployment(iam_role):
     suffix = get_temp_suffix()
     function_name = 'temp-function-' + suffix
@@ -88,14 +60,28 @@ def test_layer_deployment(iam_role):
         LayerName=layer_name)['LayerVersions']
     LOGGER.info('versions of layer %s = %s', layer_name, versions)
     last_version = sorted(versions, reverse=True, key=lambda v: v['Version'])[0]
-    layer_arn = last_version['LayerVersionArn']
+    layer_version_arn = last_version['LayerVersionArn']
+
+    layer_info = lambda_client.get_layer_version(
+        LayerName=layer_name,
+        VersionNumber=last_version['Version'],
+    )
+
+    with open(os.path.join(get_temp_path(), 'role-variables-main.json')) as fp:
+        main_vars = json.load(fp)
+
+    assert main_vars['aws_lambda_dependency_layer_state'] == 'present'
+    assert main_vars['aws_lambda_dependency_layer_name'] == layer_name
+    assert main_vars['aws_lambda_dependency_layer_arn'] == layer_info['LayerArn']
+    assert main_vars['aws_lambda_dependency_layer_version'] == str(last_version['Version'])
+    assert main_vars['aws_lambda_dependency_layer_version_arn'] == layer_version_arn
 
     with ExitStack() as stack:
         role_arn = stack.enter_context(iam_role())
 
         for i in range(6):
             try:
-                cmd = lambda_client.create_function(
+                lambda_client.create_function(
                     FunctionName=function_name,
                     Role=role_arn,
                     Runtime='ruby2.5',
@@ -106,7 +92,7 @@ def test_layer_deployment(iam_role):
                         'S3Key': object_key,
                     },
                     Layers=[
-                        layer_arn,
+                        layer_version_arn,
                     ],
                 )
             except lambda_client.exceptions.ClientError as e:
@@ -131,3 +117,33 @@ def test_layer_deployment(iam_role):
 
         response = json.loads(json.loads(payload)['body'])
         assert response['rails'] == '5.2.3'
+
+
+def test_exported_variables():
+    suffix = get_temp_suffix()
+    layer_name = 'temp-layer-2-' + suffix
+
+    lambda_client = boto3.client('lambda')
+
+    response = lambda_client.list_layer_versions(
+        LayerName=layer_name,
+    )
+
+    assert not response.get('LayerVersions', [])
+
+    with open(os.path.join(get_temp_path(), 'role-variables-side-effects-present.json')) as fp:
+        vars_presence = json.load(fp)
+    with open(os.path.join(get_temp_path(), 'role-variables-side-effects-absent.json')) as fp:
+        vars_absence = json.load(fp)
+
+    assert vars_presence['aws_lambda_dependency_layer_name'] == layer_name
+    assert vars_absence['aws_lambda_dependency_layer_name'] == layer_name
+    assert vars_presence['aws_lambda_dependency_layer_state'] == 'present'
+    assert vars_absence['aws_lambda_dependency_layer_state'] == 'absent'
+
+    assert vars_presence.get('aws_lambda_dependency_layer_arn', None)
+    assert not vars_absence.get('aws_lambda_dependency_layer_arn', None)
+    assert vars_presence.get('aws_lambda_dependency_layer_version', None)
+    assert not vars_absence.get('aws_lambda_dependency_layer_version', None)
+    assert vars_presence.get('aws_lambda_dependency_layer_version_arn', None)
+    assert not vars_absence.get('aws_lambda_dependency_layer_version_arn', None)

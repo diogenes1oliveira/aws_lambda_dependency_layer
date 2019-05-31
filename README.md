@@ -8,23 +8,23 @@ for a given runtime.
 Requires `python3.7` and the following PIP libraries to be installed in the
 control node:
 
-- ansible ~= 2.7
-- boto3 ~= 1.9
-- docker ~= 4.0
+- `ansible ~= 2.7`
+- `boto3 ~= 1.9`
+- `docker ~= 4.0`
 
 ## Role Variables
 
-| Variable   | Description                              | Default value |
-| ---------- | ---------------------------------------- | ------------- |
-| state      | `absent` or `present`                    | `present`     |
-| name       | name of the Lambda layer to be published | (required)    |
-| runtime    | valid AWS Lambda runtime                 | `ruby2.5`     |
-| context    | path to the build context                | (required)    |
-| bucket     | bucket where to store the resulting ZIP  | (required)    |
-| object_key | key of the ZIP in S3                     | (required)    |
+| Variable     | Description                              | Default value                      |
+| ------------ | ---------------------------------------- | ---------------------------------- |
+| `state`      | `absent` or `present`                    | `present`                          |
+| `name`       | name of the Lambda layer to be published | (required)                         |
+| `runtime`    | valid AWS Lambda runtime                 | `ruby2.5`                          |
+| `context`    | path to the build context                | (required if `state == 'present'`) |
+| `bucket`     | bucket where to store the resulting ZIP  | (required if `state == 'present'`) |
+| `object_key` | key of the ZIP in S3                     | (required if `state == 'present'`) |
 
 The build context must contain the files with the dependencies specifications
-for each runtime, according to the table below:
+for each supported runtime, according to the table below:
 
 | Runtime   | File specs                |
 | --------- | ------------------------- |
@@ -34,12 +34,12 @@ for each runtime, according to the table below:
 
 The following variables are exported:
 
-| Variable                            | Description                      |
-| ----------------------------------- | -------------------------------- |
-| lambda_dependency_layer_name        | Name of the Lambda layer         |
-| lambda_dependency_layer_arn         | ARN of the Lambda layer          |
-| lambda_dependency_layer_version     | Published version                |
-| lambda_dependency_layer_version_arn | Full ARN of the uploaded version |
+| Variable                                | Description                      | Returned when        |
+| --------------------------------------- | -------------------------------- | -------------------- |
+| aws_lambda_dependency_layer_state       | `absent` or `present`            | always               |
+| aws_lambda_dependency_layer_name        | Name of the Lambda layer         | always               |
+| aws_lambda_dependency_layer_version     | Published version                | `state == 'present'` |
+| aws_lambda_dependency_layer_version_arn | Full ARN of the uploaded version | `state == 'present'` |
 
 ## Example Playbook
 
@@ -47,7 +47,9 @@ The following variables are exported:
 - hosts: localhost
   roles:
     - role: lambda-dependency-layer
-      path: .
+      name: my-lambda-ruby-layer
+      state: present
+      context: .
       runtime: ruby2.5
 ```
 
