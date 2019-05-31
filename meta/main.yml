@@ -1,6 +1,6 @@
 ---
 galaxy_info:
-  role_name: aws-lambda-dependency-layer
+  role_name: aws_lambda_dependency_layer
   description: >
     Build and deploy an AWS Lambda layer bundled with the dependencies
     for a given runtime.

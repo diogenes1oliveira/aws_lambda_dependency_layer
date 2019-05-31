@@ -41,23 +41,13 @@ description:
     - Deploy and publish versions of AWS Lambda Layers
 
 options:
-    name:
-        description:
-            - Name of the layer to be created
-        required: True
-    state:
-        description:
-            - Whether to create or destroy the Lambda Layer
-        default: 'present'
-        choices: ['present', 'absent']
-    path:
-        description:
-            - Path to the ZIP file in the filesystem
-            - Required if state == 'present'
-        default: None
     bucket:
         description:
             - Bucket where the layer bundle is stored
+        required: True
+    name:
+        description:
+            - Name of the layer to be created
         required: True
     object_key:
         description:
@@ -67,6 +57,19 @@ options:
         description:
             - Version of the object
         default: None
+    path:
+        description:
+            - Path to the ZIP file in the filesystem
+            - Required if state == 'present'
+        default: None
+    state:
+        description:
+            - Whether to create or destroy the Lambda Layer
+        default: present
+        choices:
+            - absent
+            - present
+
 
 author:
     - Diógenes Oliveira (@diogenes1oliveira)
@@ -183,7 +186,14 @@ def get_layer_version_info(name, local_checksum=None, lambda_client=None):
     Returns info (via lambda_client.get_layer_version) of the last layer version
     with the given name.
     """
-    lambda_client = lambda_client or boto3.client('lambda')
+
+    connection_args = {}
+    if os.getenv('LAMBDA_URL', None):
+        connection_args['endpoint_url'] = os.environ['LAMBDA_URL']
+    if os.getenv('AWS_DEFAULT_REGION', None):
+        connection_args['region_name'] = os.environ['AWS_DEFAULT_REGION']
+
+    lambda_client = lambda_client or boto3.client('lambda', **connection_args)
     all_versions = set()
 
     response = lambda_client.list_layer_versions(LayerName=name)
@@ -217,7 +227,13 @@ def get_layer_version_info(name, local_checksum=None, lambda_client=None):
 
 
 def destroy_layer(name, lambda_client=None):
-    lambda_client = lambda_client or boto3.client('lambda')
+    connection_args = {}
+    if os.getenv('LAMBDA_URL', None):
+        connection_args['endpoint_url'] = os.environ['LAMBDA_URL']
+    if os.getenv('AWS_DEFAULT_REGION', None):
+        connection_args['region_name'] = os.environ['AWS_DEFAULT_REGION']
+
+    lambda_client = lambda_client or boto3.client('lambda', **connection_args)
     versions = set()
 
     response = lambda_client.list_layer_versions(LayerName=name)
@@ -245,7 +261,14 @@ def manage_lambda_layer(name, bucket, object_key, object_version, path, state, m
     result = dict(
         changed=False,
     )
-    lambda_client = boto3.client('lambda')
+    connection_args = {}
+
+    if os.getenv('LAMBDA_URL', None):
+        connection_args['endpoint_url'] = os.environ['LAMBDA_URL']
+    if os.getenv('AWS_DEFAULT_REGION', None):
+        connection_args['region_name'] = os.environ['AWS_DEFAULT_REGION']
+
+    lambda_client = boto3.client('lambda', **connection_args)
     local_checksum = state == 'absent' or get_file_checksum(path)
     layer = get_layer_version_info(name, local_checksum, lambda_client)
 
@@ -302,13 +325,22 @@ def manage_lambda_layer(name, bucket, object_key, object_version, path, state, m
 def run_module():
     # define available arguments/parameters a user can pass to the module
     module_args = dict(
-        name=dict(type='str', required=True),
-        state=dict(type='str', default='present',
-                   choices=['present', 'absent']),
-        path=dict(type='str', default=None),
         bucket=dict(type='str', default=None),
+        name=dict(type='str', required=True),
         object_key=dict(type='str', default=None),
         object_version=dict(type='str', default=None),
+        path=dict(type='str', default=None),
+        region=dict(type='str', default=(
+            os.getenv('AWS_DEFAULT_REGION', '') or None
+        ), aliases=['aws_region']),
+        s3_endpoint_url=dict(type='str', default=(
+            os.getenv('S3_URL', '') or None
+        )),
+        lambda_endpoint_url=dict(type='str', default=(
+            os.getenv('LAMBDA_URL', '') or None
+        )),
+        state=dict(type='str', default='present',
+                   choices=['present', 'absent']),
     )
 
     module = AnsibleModule(
@@ -326,6 +358,10 @@ def run_module():
         return result
 
     try:
+        connection = dict(
+            region=module.params['region'],
+            s3_endpoint_url=module.params['s3_endpoint_url'],
+        )
         result.update(
             manage_lambda_layer(
                 name=module.params['name'],

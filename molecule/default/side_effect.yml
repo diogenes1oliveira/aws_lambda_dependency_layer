@@ -7,10 +7,10 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
 
   tasks:
-    - include_tasks: generate-suffix.yml
+    - include_tasks: assure-dependencies.yml
 
     - include_role:
-        name: lambda-dependency-layer
+        name: aws_lambda_dependency_layer
       vars:
         name: "temp-layer-2-{{ temp_suffix }}"
         state: present
@@ -25,7 +25,7 @@
         dest: "{{ molecule_ephemeral_directory }}/role-variables-side-effects-present.json"
 
     - include_role:
-        name: lambda-dependency-layer
+        name: aws_lambda_dependency_layer
       vars:
         name: "temp-layer-2-{{ temp_suffix }}"
         state: absent

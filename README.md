@@ -1,4 +1,4 @@
-# aws-lambda-dependency-layer
+# aws_lambda_dependency_layer
 
 Ansible role to build and deploy a Lambda layer bundled with the dependencies
 for a given runtime.
@@ -47,7 +47,7 @@ The following variables are exported:
 ```yaml
 - hosts: localhost
   roles:
-    - role: lambda-dependency-layer
+    - role: aws_lambda_dependency_layer
       name: my-lambda-ruby-layer
       state: present
       context: .

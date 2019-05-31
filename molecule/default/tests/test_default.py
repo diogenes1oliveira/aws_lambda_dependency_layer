@@ -54,12 +54,18 @@ def test_layer_deployment(iam_role):
     bucket_name = 'temp-bucket-' + suffix
     object_key = upload_sample_bundle(bucket_name)
 
-    lambda_client = boto3.client('lambda')
+    connection_args = {}
+    if os.getenv('LAMBDA_URL', None):
+        connection_args['endpoint_url'] = os.environ['LAMBDA_URL']
+    if os.getenv('AWS_DEFAULT_REGION', None):
+        connection_args['region_name'] = os.environ['AWS_DEFAULT_REGION']
+    lambda_client = boto3.client('lambda', **connection_args)
 
     versions = lambda_client.list_layer_versions(
         LayerName=layer_name)['LayerVersions']
     LOGGER.info('versions of layer %s = %s', layer_name, versions)
-    last_version = sorted(versions, reverse=True, key=lambda v: v['Version'])[0]
+    last_version = sorted(versions, reverse=True,
+                          key=lambda v: v['Version'])[0]
     layer_version_arn = last_version['LayerVersionArn']
 
     layer_info = lambda_client.get_layer_version(
@@ -73,7 +79,8 @@ def test_layer_deployment(iam_role):
     assert main_vars['aws_lambda_dependency_layer_state'] == 'present'
     assert main_vars['aws_lambda_dependency_layer_name'] == layer_name
     assert main_vars['aws_lambda_dependency_layer_arn'] == layer_info['LayerArn']
-    assert main_vars['aws_lambda_dependency_layer_version'] == str(last_version['Version'])
+    assert main_vars['aws_lambda_dependency_layer_version'] == str(
+        last_version['Version'])
     assert main_vars['aws_lambda_dependency_layer_version_arn'] == layer_version_arn
 
     with ExitStack() as stack:
@@ -123,7 +130,12 @@ def test_exported_variables():
     suffix = get_temp_suffix()
     layer_name = 'temp-layer-2-' + suffix
 
-    lambda_client = boto3.client('lambda')
+    connection_args = {}
+    if os.getenv('LAMBDA_URL', None):
+        connection_args['endpoint_url'] = os.environ['LAMBDA_URL']
+    if os.getenv('AWS_DEFAULT_REGION', None):
+        connection_args['region_name'] = os.environ['AWS_DEFAULT_REGION']
+    lambda_client = boto3.client('lambda', **connection_args)
 
     response = lambda_client.list_layer_versions(
         LayerName=layer_name,
@@ -146,4 +158,5 @@ def test_exported_variables():
     assert vars_presence.get('aws_lambda_dependency_layer_version', None)
     assert not vars_absence.get('aws_lambda_dependency_layer_version', None)
     assert vars_presence.get('aws_lambda_dependency_layer_version_arn', None)
-    assert not vars_absence.get('aws_lambda_dependency_layer_version_arn', None)
+    assert not vars_absence.get(
+        'aws_lambda_dependency_layer_version_arn', None)

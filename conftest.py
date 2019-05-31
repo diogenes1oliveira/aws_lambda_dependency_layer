@@ -29,7 +29,12 @@ def temp_iam_role_context(
     """
     version = str(uuid4()).replace('-', '')[:10].upper()
     role_name = prefix + version
-    iam_client = boto3.client('iam')
+    connection_args = {}
+    if os.getenv('IAM_URL', None):
+        connection_args['endpoint_url'] = os.environ['IAM_URL']
+    if os.getenv('AWS_DEFAULT_REGION', None):
+        connection_args['region_name'] = os.environ['AWS_DEFAULT_REGION']
+    iam_client = boto3.client('iam', **connection_args)
 
     with ExitStack() as stack:
         role_cmd = iam_client.create_role(
@@ -78,9 +83,15 @@ def temp_bucket_context(prefix='temp-bucket-'):
     """
     Creates a temporary bucket
     """
+    connection_args = {}
+    if os.getenv('S3_URL', None):
+        connection_args['endpoint_url'] = os.environ['S3_URL']
+    if os.getenv('AWS_DEFAULT_REGION', None):
+        connection_args['region_name'] = os.environ['AWS_DEFAULT_REGION']
+
     version = str(uuid4()).replace('-', '')[:10].lower()
     bucket_name = prefix + version
-    s3_client = boto3.client('s3')
+    s3_client = boto3.client('s3', **connection_args)
 
     s3_client.create_bucket(
         Bucket=bucket_name,

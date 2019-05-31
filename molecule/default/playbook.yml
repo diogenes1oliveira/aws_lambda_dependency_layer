@@ -7,15 +7,10 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
 
   tasks:
-    - include_tasks: generate-suffix.yml
-
-    - name: Assure the temporary bucket exists
-      s3_bucket:
-        name: "temp-bucket-{{ temp_suffix }}"
-        state: present
+    - include_tasks: assure-dependencies.yml
 
     - include_role:
-        name: lambda-dependency-layer
+        name: aws_lambda_dependency_layer
       vars:
         name: "temp-layer-{{ temp_suffix }}"
         state: present

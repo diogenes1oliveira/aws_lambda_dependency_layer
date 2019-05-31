@@ -7,9 +7,4 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
 
   tasks:
-    - include_tasks: generate-suffix.yml
-
-    - name: Create the temporary bucket
-      s3_bucket:
-        name: "temp-bucket-{{ temp_suffix }}"
-        state: present
+    - include_tasks: assure-dependencies.yml

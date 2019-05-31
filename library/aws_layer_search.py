@@ -88,7 +88,12 @@ def run_module():
     if module.check_mode:
         return result
 
-    client = boto3.client('lambda')
+    connection_args = {}
+    if os.getenv('LAMBDA_URL', None):
+        connection_args['endpoint_url'] = os.environ['LAMBDA_URL']
+    if os.getenv('AWS_DEFAULT_REGION', None):
+        connection_args['region_name'] = os.environ['AWS_DEFAULT_REGION']
+    client = boto3.client('lambda', **connection_args)
 
     try:
         cmd = client.list_layer_versions(

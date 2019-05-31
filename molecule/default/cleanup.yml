@@ -7,7 +7,7 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
 
   tasks:
-    - include_tasks: generate-suffix.yml
+    - include_tasks: assure-dependencies.yml
 
     - name: Destroy the temporary bucket
       s3_bucket:
@@ -21,6 +21,13 @@
         name: "temp-bucket-{{ temp_suffix }}"
         state: absent
 
-    - aws_lambda_layer:
+    - name: Destroy the layer
+      aws_lambda_layer:
         name: "temp-layer-{{ temp_suffix }}"
         state: absent
+
+    - name: Stop localstack
+      docker_container:
+        name: aws-lambda-dependency-layer-localstack
+        image: localstack/localstack
+        state: stopped
