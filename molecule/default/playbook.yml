@@ -17,7 +17,7 @@
     - include_role:
         name: lambda-dependency-layer
       vars:
-        name: "test-layer-{{ temp_suffix }}"
+        name: "temp-layer-{{ temp_suffix }}"
         state: present
         context: ./tests/sample-data/ruby2.5
         runtime: ruby2.5

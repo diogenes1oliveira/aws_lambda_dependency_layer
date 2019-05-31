@@ -2,7 +2,7 @@
 # tasks/main
 
 - name: Check if the image already exists
-  layer_search:
+  aws_layer_search:
     name: "{{ name }}"
   register: layer
 
@@ -36,11 +36,7 @@
 - name: Publish the layer
   aws_lambda_layer:
     name: "{{ name }}"
-
-- name: Upload it to S3
-  aws_s3:
+    state: present
+    path: "{{ tempdir.path }}/layer.zip"
     bucket: "{{ bucket }}"
-    mode: put
-    object: "{{ object_key }}"
-    src: "{{ tempdir.path }}/layer.zip"
-    overwrite: different
+    object_key: "{{ object_key }}"

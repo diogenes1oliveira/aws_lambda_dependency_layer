@@ -9,6 +9,7 @@ from __future__ import print_function
 from base64 import b64encode
 import hashlib
 import logging
+import json
 import os
 from shutil import rmtree
 from tempfile import mkdtemp
@@ -206,14 +207,54 @@ def get_layer_version_info(name, lambda_client=None):
         )
 
 
+def destroy_layer(name, lambda_client=None):
+    lambda_client = lambda_client or boto3.client('lambda')
+    versions = set()
+
+    response = lambda_client.list_layer_versions(LayerName=name)
+
+    versions |= {v['Version'] for v in response['LayerVersions']}
+    marker = response.get('NextMarker', None)
+
+    while marker:
+        response = lambda_client.list_layer_versions(
+            LayerName=name, NextMarker=marker)
+        versions |= {v['Version'] for v in response['LayerVersions']}
+        marker = response.get('NextMarker', None)
+
+    LOGGER.info('Destroying versions %s of layer %s', sorted(versions), name)
+    for version in versions:
+        lambda_client.delete_layer_version(
+            LayerName=name,
+            VersionNumber=version,
+        )
+
+    return
+
+
 def manage_lambda_layer(name, bucket, object_key, object_version, path, state, metadata='sha256'):
     result = dict(
         changed=False,
     )
     lambda_client = boto3.client('lambda')
+    layer = get_layer_version_info(name, lambda_client)
+    LOGGER.info('bool(get_layer_version_info): %s', bool(layer))
+    if layer:
+        result['arn'] = layer['LayerArn']
+        result['version'] = layer['Version']
+        result['version_arn'] = layer['LayerVersionArn']
+        result['version_checksum'] = layer['Content']['CodeSha256']
+        if state == 'absent':
+            result['changed'] = True
+            destroy_layer(name, lambda_client)
+            return result
+    elif state == 'absent':
+        return result
+
     s3_checksum, downloaded = fetch_s3_checksum(
         bucket, object_key, object_version, metadata=metadata)
     local_checksum = get_file_checksum(path)
+    assert local_checksum
 
     result['bucket'] = bucket
     result['object_version'] = object_version
@@ -223,14 +264,6 @@ def manage_lambda_layer(name, bucket, object_key, object_version, path, state, m
         object_version = upload_file(
             path, bucket, object_key, local_checksum, metadata=metadata)
         result['changed'] = True
-
-    layer = get_layer_version_info(name, lambda_client)
-    LOGGER.info('bool(get_layer_version_info): %s', bool(layer))
-    if layer:
-        result['arn'] = layer['LayerArn']
-        result['version'] = layer['Version']
-        result['version_arn'] = layer['LayerVersionArn']
-        result['version_checksum'] = layer['Content']['CodeSha256']
 
     if not layer or result['version_checksum'] != local_checksum:
         options = {
@@ -249,6 +282,7 @@ def manage_lambda_layer(name, bucket, object_key, object_version, path, state, m
         result['version'] = layer['Version']
         result['version_arn'] = layer['LayerVersionArn']
         result['version_checksum'] = layer['Content']['CodeSha256']
+        result['stdout'] = json.dumps(layer, indent=2)
 
     return result
 
@@ -260,8 +294,8 @@ def run_module():
         state=dict(type='str', default='present',
                    choices=['present', 'absent']),
         path=dict(type='str', default=None),
-        bucket=dict(type='str', required=True),
-        object_key=dict(type='str', required=True),
+        bucket=dict(type='str', default=None),
+        object_key=dict(type='str', default=None),
         object_version=dict(type='str', default=None),
     )
 
@@ -285,8 +319,8 @@ def run_module():
                 name=module.params['name'],
                 state=module.params['state'],
                 bucket=module.params['bucket'],
-                object_key=module.params['object'],
-                object_version=module.params['object_version'] or None,
+                object_key=module.params['object_key'],
+                object_version=(module.params['object_version'] or None),
                 path=module.params['path'],
             )
         )

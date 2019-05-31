@@ -7,7 +7,7 @@
   set_fact:
     temp_suffix: >-
       {{ (
-        'very-secret' |
+        (lookup('env', 'SECRET_SEED') or 'very-secret-name') |
         password_hash('md5', 65534 | random(seed=ansible_machine_id) | string) |
         hash('md5') |
         replace('-', '')
