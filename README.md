@@ -14,14 +14,14 @@ control node:
 
 ## Role Variables
 
-| Variable     | Description                              | Default value                      |
-| ------------ | ---------------------------------------- | ---------------------------------- |
-| `state`      | `absent` or `present`                    | `present`                          |
-| `name`       | name of the Lambda layer to be published | (required)                         |
-| `runtime`    | valid AWS Lambda runtime                 | `ruby2.5`                          |
-| `context`    | path to the build context                | (required if `state == 'present'`) |
-| `bucket`     | bucket where to store the resulting ZIP  | (required if `state == 'present'`) |
-| `object_key` | key of the ZIP in S3                     | (required if `state == 'present'`) |
+| Variable     | Description                              | Default value | Required if          |
+| ------------ | ---------------------------------------- | ------------- | -------------------- |
+| `state`      | `absent` or `present`                    | `present`     | -                    |
+| `name`       | name of the Lambda layer to be published | -             | always               |
+| `runtime`    | valid AWS Lambda runtime                 | `ruby2.5`     | -                    |
+| `context`    | path to the build context                | -             | `state == 'present'` |
+| `bucket`     | bucket where to store the resulting ZIP  | -             | `state == 'present'` |
+| `object_key` | key of the ZIP in S3                     | -             | `state == 'present'` |
 
 The build context must contain the files with the dependencies specifications
 for each supported runtime, according to the table below:
@@ -34,12 +34,13 @@ for each supported runtime, according to the table below:
 
 The following variables are exported:
 
-| Variable                                | Description                      | Returned when        |
-| --------------------------------------- | -------------------------------- | -------------------- |
-| aws_lambda_dependency_layer_state       | `absent` or `present`            | always               |
-| aws_lambda_dependency_layer_name        | Name of the Lambda layer         | always               |
-| aws_lambda_dependency_layer_version     | Published version                | `state == 'present'` |
-| aws_lambda_dependency_layer_version_arn | Full ARN of the uploaded version | `state == 'present'` |
+| Variable                                  | Description                      | Returned when        |
+| ----------------------------------------- | -------------------------------- | -------------------- |
+| `aws_lambda_dependency_layer_state`       | `absent` or `present`            | always               |
+| `aws_lambda_dependency_layer_name`        | Name of the Lambda layer         | always               |
+| `aws_lambda_dependency_layer_arn`         | ARN of the Lambda layer          | `state == 'present'` |
+| `aws_lambda_dependency_layer_version`     | Published version                | `state == 'present'` |
+| `aws_lambda_dependency_layer_version_arn` | Full ARN of the uploaded version | `state == 'present'` |
 
 ## Example Playbook
 
