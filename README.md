@@ -1,4 +1,4 @@
-# lambda-dependency-layer
+# aws-lambda-dependency-layer
 
 Ansible role to build and deploy a Lambda layer bundled with the dependencies
 for a given runtime.
