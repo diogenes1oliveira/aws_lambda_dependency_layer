@@ -14,14 +14,15 @@ control node:
 
 ## Role Variables
 
-| Variable     | Description                              | Default value | Required if          |
-| ------------ | ---------------------------------------- | ------------- | -------------------- |
-| `state`      | `absent` or `present`                    | `present`     | -                    |
-| `name`       | name of the Lambda layer to be published | -             | always               |
-| `runtime`    | valid AWS Lambda runtime                 | `ruby2.5`     | -                    |
-| `context`    | path to the build context                | -             | `state == 'present'` |
-| `bucket`     | bucket where to store the resulting ZIP  | -             | `state == 'present'` |
-| `object_key` | key of the ZIP in S3                     | -             | `state == 'present'` |
+| Variable     | Description                              | Default value | Required if                        |
+| ------------ | ---------------------------------------- | ------------- | ---------------------------------- |
+| `bucket`     | bucket where to store the resulting ZIP  | -             | `state == 'present'`               |
+| `check_only` | don't build, just check the state        | `False`       | -                                  |
+| `context`    | path to the build context                | -             | `check_only or state == 'present'` |
+| `object_key` | key of the ZIP in S3                     | -             | `state == 'present'`               |
+| `name`       | name of the Lambda layer to be published | -             | always                             |
+| `runtime`    | valid AWS Lambda runtime                 | `ruby2.5`     | -                                  |
+| `state`      | `absent` or `present`                    | `present`     | -                                  |
 
 The build context must contain the files with the dependencies specifications
 for each supported runtime, according to the table below:

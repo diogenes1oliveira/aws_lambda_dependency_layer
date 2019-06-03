@@ -25,9 +25,3 @@
       aws_lambda_layer:
         name: "temp-layer-{{ temp_suffix }}"
         state: absent
-
-    - name: Stop localstack
-      docker_container:
-        name: aws-lambda-dependency-layer-localstack
-        image: localstack/localstack
-        state: stopped

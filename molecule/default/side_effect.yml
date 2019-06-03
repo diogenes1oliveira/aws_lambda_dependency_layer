@@ -28,9 +28,33 @@
         name: aws_lambda_dependency_layer
       vars:
         name: "temp-layer-2-{{ temp_suffix }}"
+        context: ./tests/sample-data/ruby2.5
+        check_only: true
+
+    - name: Save the exported variables
+      copy:
+        content: "{{ hostvars[inventory_hostname] | to_json }}"
+        dest: "{{ molecule_ephemeral_directory }}/role-variables-check-present.json"
+
+    - include_role:
+        name: aws_lambda_dependency_layer
+      vars:
+        name: "temp-layer-2-{{ temp_suffix }}"
         state: absent
 
     - name: Save the exported variables
       copy:
         content: "{{ hostvars[inventory_hostname] | to_json }}"
         dest: "{{ molecule_ephemeral_directory }}/role-variables-side-effects-absent.json"
+
+    - include_role:
+        name: aws_lambda_dependency_layer
+      vars:
+        name: "temp-layer-2-{{ temp_suffix }}"
+        context: ./tests/sample-data/ruby2.5
+        check_only: true
+
+    - name: Save the exported variables
+      copy:
+        content: "{{ hostvars[inventory_hostname] | to_json }}"
+        dest: "{{ molecule_ephemeral_directory }}/role-variables-check-absent.json"

@@ -25,8 +25,16 @@
     aws_lambda_dependency_layer_name: "{{ name }}"
     aws_lambda_dependency_layer_state: "{{ state }}"
 
+- name: Handle the check_only mode
+  set_fact:
+    aws_lambda_dependency_layer_arn: "{{ layer.layer_arn | d(omit) }}"
+    aws_lambda_dependency_layer_version: "{{ layer.version | d(omit) }}"
+    aws_lambda_dependency_layer_version_arn: "{{ layer.arn | d(omit) }}"
+    aws_lambda_dependency_layer_state: "{{ layer.found | ternary('present', 'absent') }}"
+  when: check_only | bool
+
 - name: Deploy the layer if requested so
-  when: state == 'present'
+  when: state == 'present' and not check_only
   block:
     - name: Build the Docker image with the dependencies bundled in
       docker_image:
@@ -36,6 +44,7 @@
         name: "temp-lambda-image-{{ name }}"
         build:
           path: "{{ context }}"
+          pull: true
           dockerfile: "{{ role_path }}/runtimes/{{ runtime }}/Dockerfile"
 
     - name: Create a temporary directory

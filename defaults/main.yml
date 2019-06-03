@@ -1,0 +1,9 @@
+---
+check_only: False
+# don't build, just check the state
+
+runtime: "ruby2.5"
+# valid AWS Lambda runtime
+
+state: "present"
+# 'absent' or 'present'

@@ -61,11 +61,15 @@ name:
 version:
     description: last version of this layer
     returned: found
-    type: list
+    type: str
 arn:
     description: ARNs of the last version of this layer
     returned: found
-    type: list
+    type: str
+layer_arn:
+    description: ARN of the layer
+    returned: found
+    type: str
 '''
 
 
@@ -110,8 +114,9 @@ def run_module():
         result['name'] = module.params['name']
         result['found'] = len(versions) > 0
         if result['found']:
-            result['version'] = versions[0]['Version']
+            result['version'] = str(versions[0]['Version'])
             result['arn'] = versions[0]['LayerVersionArn']
+            result['layer_arn'] = result['arn'].rpartition(':')[0]
 
     module.exit_json(**result)
 

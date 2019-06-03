@@ -18,26 +18,6 @@
     content: "{{ temp_suffix }}"
     dest: "{{ molecule_ephemeral_directory }}/temp-suffix.txt"
 
-- name: Start up localstack
-  docker_container:
-    image: localstack/localstack
-    auto_remove: true
-    name: aws-lambda-dependency-layer-localstack
-    state: started
-    privileged: true
-    published_ports:
-      - "4572:4572"
-      - "4574:4574"
-      - "4586:4586"
-      - "4593:4593"
-      - "8080:8080"
-    volumes:
-      - "{{ molecule_ephemeral_directory }}/localstack:/tmp/localstack"
-    env:
-      SERVICES: s3,lambda,iam
-      LAMBDA_EXECUTOR: docker
-      DEBUG: "1"
-
 - name: Assure the temporary bucket exists
   s3_bucket:
     name: "temp-bucket-{{ temp_suffix }}"

@@ -147,6 +147,10 @@ def test_exported_variables():
         vars_presence = json.load(fp)
     with open(os.path.join(get_temp_path(), 'role-variables-side-effects-absent.json')) as fp:
         vars_absence = json.load(fp)
+    with open(os.path.join(get_temp_path(), 'role-variables-check-present.json')) as fp:
+        vars_presence_check = json.load(fp)
+    with open(os.path.join(get_temp_path(), 'role-variables-check-absent.json')) as fp:
+        vars_absence_check = json.load(fp)
 
     assert vars_presence['aws_lambda_dependency_layer_name'] == layer_name
     assert vars_absence['aws_lambda_dependency_layer_name'] == layer_name
@@ -160,3 +164,6 @@ def test_exported_variables():
     assert vars_presence.get('aws_lambda_dependency_layer_version_arn', None)
     assert not vars_absence.get(
         'aws_lambda_dependency_layer_version_arn', None)
+
+    assert vars_presence_check['aws_lambda_dependency_layer_state'] == 'present'
+    assert vars_absence_check['aws_lambda_dependency_layer_state'] == 'absent'

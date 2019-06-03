@@ -10,7 +10,6 @@ services:
 if: branch = master
 
 install:
-  - docker pull localstack/localstack
   - pip install pipenv
   - pipenv install --dev
 
