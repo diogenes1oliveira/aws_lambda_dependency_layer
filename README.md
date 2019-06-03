@@ -37,9 +37,10 @@ The following variables are exported:
 
 | Variable                                  | Description                      | Returned when        |
 | ----------------------------------------- | -------------------------------- | -------------------- |
-| `aws_lambda_dependency_layer_state`       | `absent` or `present`            | always               |
-| `aws_lambda_dependency_layer_name`        | Name of the Lambda layer         | always               |
 | `aws_lambda_dependency_layer_arn`         | ARN of the Lambda layer          | `state == 'present'` |
+| `aws_lambda_dependency_layer_deployed`    | Whether a deployment occurred    | always               |
+| `aws_lambda_dependency_layer_name`        | Name of the Lambda layer         | always               |
+| `aws_lambda_dependency_layer_state`       | `absent` or `present`            | always               |
 | `aws_lambda_dependency_layer_version`     | Published version                | `state == 'present'` |
 | `aws_lambda_dependency_layer_version_arn` | Full ARN of the uploaded version | `state == 'present'` |
 

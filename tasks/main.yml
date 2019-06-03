@@ -7,34 +7,17 @@
   register: layer
 
 - name: Destroy the layer if requested so
-  when: state == 'absent'
-  block:
-    - name: Destroy the layer
-      aws_lambda_layer:
-        name: "{{ name }}"
-        state: absent
+  when: state == 'absent' and not (check_only | bool)
+  aws_lambda_layer:
+    name: "{{ name }}"
+    state: absent
 
-    - name: Export the variables
-      set_fact:
-        aws_lambda_dependency_layer_arn:
-        aws_lambda_dependency_layer_version:
-        aws_lambda_dependency_layer_version_arn:
-
-- name: Export the state
+- name: By default, no deployment occurs
   set_fact:
-    aws_lambda_dependency_layer_name: "{{ name }}"
-    aws_lambda_dependency_layer_state: "{{ state }}"
-
-- name: Handle the check_only mode
-  set_fact:
-    aws_lambda_dependency_layer_arn: "{{ layer.layer_arn | d(omit) }}"
-    aws_lambda_dependency_layer_version: "{{ layer.version | d(omit) }}"
-    aws_lambda_dependency_layer_version_arn: "{{ layer.arn | d(omit) }}"
-    aws_lambda_dependency_layer_state: "{{ layer.found | ternary('present', 'absent') }}"
-  when: check_only | bool
+    aws_lambda_dependency_layer_deployed: false
 
 - name: Deploy the layer if requested so
-  when: state == 'present' and not check_only
+  when: state == 'present' and not (check_only | bool) and not layer.found
   block:
     - name: Build the Docker image with the dependencies bundled in
       docker_image:
@@ -73,8 +56,19 @@
         object_key: "{{ object_key }}"
       register: lambda_layer
 
-    - name: Export the published version
+    - name: Register that a deployment occurred
       set_fact:
-        aws_lambda_dependency_layer_arn: "{{ lambda_layer.arn }}"
-        aws_lambda_dependency_layer_version: "{{ lambda_layer.version | string }}"
-        aws_lambda_dependency_layer_version_arn: "{{ lambda_layer.version_arn }}"
+        aws_lambda_dependency_layer_deployed: true
+
+- name: Look up the image again
+  aws_layer_search:
+    name: "{{ name }}"
+  register: layer
+
+- name: Export the variables
+  set_fact:
+    aws_lambda_dependency_layer_name: "{{ name }}"
+    aws_lambda_dependency_layer_arn: "{{ layer.layer_arn | d(None) }}"
+    aws_lambda_dependency_layer_version: "{{ layer.version | d(None) }}"
+    aws_lambda_dependency_layer_version_arn: "{{ layer.arn | d(None) }}"
+    aws_lambda_dependency_layer_state: "{{ layer.found | ternary('present', 'absent') }}"

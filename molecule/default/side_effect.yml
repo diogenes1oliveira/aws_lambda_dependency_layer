@@ -9,7 +9,8 @@
   tasks:
     - include_tasks: assure-dependencies.yml
 
-    - include_role:
+    - name: Deploy the image
+      include_role:
         name: aws_lambda_dependency_layer
       vars:
         name: "temp-layer-2-{{ temp_suffix }}"
@@ -19,42 +20,45 @@
         bucket: "temp-bucket-{{ temp_suffix }}"
         object_key: layer-2.zip
 
-    - name: Save the exported variables
+    - name: Save the exported variables from the deployment
       copy:
         content: "{{ hostvars[inventory_hostname] | to_json }}"
         dest: "{{ molecule_ephemeral_directory }}/role-variables-side-effects-present.json"
 
-    - include_role:
+    - name: Check after deployment
+      include_role:
         name: aws_lambda_dependency_layer
       vars:
         name: "temp-layer-2-{{ temp_suffix }}"
         context: ./tests/sample-data/ruby2.5
         check_only: true
 
-    - name: Save the exported variables
+    - name: Save the checked variables after deployment
       copy:
         content: "{{ hostvars[inventory_hostname] | to_json }}"
         dest: "{{ molecule_ephemeral_directory }}/role-variables-check-present.json"
 
-    - include_role:
+    - name: Undeploy the image
+      include_role:
         name: aws_lambda_dependency_layer
       vars:
         name: "temp-layer-2-{{ temp_suffix }}"
         state: absent
 
-    - name: Save the exported variables
+    - name: Save the exported variables after undeployment
       copy:
         content: "{{ hostvars[inventory_hostname] | to_json }}"
         dest: "{{ molecule_ephemeral_directory }}/role-variables-side-effects-absent.json"
 
-    - include_role:
+    - name: Check after undeployment
+      include_role:
         name: aws_lambda_dependency_layer
       vars:
         name: "temp-layer-2-{{ temp_suffix }}"
         context: ./tests/sample-data/ruby2.5
         check_only: true
 
-    - name: Save the exported variables
+    - name: Save the checked variables after undeployment
       copy:
         content: "{{ hostvars[inventory_hostname] | to_json }}"
         dest: "{{ molecule_ephemeral_directory }}/role-variables-check-absent.json"

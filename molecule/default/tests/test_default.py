@@ -166,4 +166,6 @@ def test_exported_variables():
         'aws_lambda_dependency_layer_version_arn', None)
 
     assert vars_presence_check['aws_lambda_dependency_layer_state'] == 'present'
+    assert not vars_presence_check['aws_lambda_dependency_layer_deployed']
     assert vars_absence_check['aws_lambda_dependency_layer_state'] == 'absent'
+    assert not vars_absence_check['aws_lambda_dependency_layer_deployed']
