@@ -1,0 +1,13 @@
+---
+- name: Publish the layer
+  aws_lambda_layer:
+    name: "{{ name }}"
+    state: present
+    path: "{{ output }}/{{ layer_filename }}"
+    bucket: "{{ bucket }}"
+    object_key: "{{ object_key }}"
+  register: lambda_layer
+
+- name: Register that a deployment occurred
+  set_fact:
+    aws_lambda_dependency_layer_deployed: true

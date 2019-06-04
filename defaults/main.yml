@@ -1,6 +1,8 @@
 ---
-check_only: False
-# don't build, just check the state
+mode: "deploy"
+# - "check": don't build, just check the state
+# - "build": just build the layer code
+# - "deploy": build and deploy
 
 runtime: "ruby2.5"
 # valid AWS Lambda runtime

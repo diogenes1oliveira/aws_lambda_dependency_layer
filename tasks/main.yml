@@ -7,58 +7,24 @@
   register: layer
 
 - name: Destroy the layer if requested so
-  when: state == 'absent' and not (check_only | bool)
+  when: state == 'absent' and mode == 'deploy'
   aws_lambda_layer:
     name: "{{ name }}"
     state: absent
 
-- name: By default, no deployment occurs
+- name: By default, no deployment or build occurs
   set_fact:
+    aws_lambda_dependency_layer_built: false
     aws_lambda_dependency_layer_deployed: false
+    aws_lambda_dependency_layer_zip: null
 
-- name: Deploy the layer if requested so
-  when: state == 'present' and not (check_only | bool) and not layer.found
-  block:
-    - name: Build the Docker image with the dependencies bundled in
-      docker_image:
-        source: build
-        state: present
-        force_tag: true
-        name: "temp-lambda-image-{{ name }}"
-        build:
-          path: "{{ context }}"
-          pull: true
-          dockerfile: "{{ role_path }}/runtimes/{{ runtime }}/Dockerfile"
+- name: Build the layer
+  when: (mode == 'build') or (mode == 'deploy' and not layer.found and state == 'present')
+  include_tasks: build.yml
 
-    - name: Create a temporary directory
-      tempfile:
-        state: directory
-      register: tempdir
-      changed_when: false
-
-    - name: Copy the layer contents to the temporary directory
-      docker_container:
-        name: "temp-lambda-container-{{ name }}"
-        image: "temp-lambda-image-{{ name }}"
-        state: started
-        command: cp /layer.zip /mnt/layer.zip
-        cleanup: true
-        volumes:
-          - "{{ tempdir.path }}:/mnt"
-      changed_when: false
-
-    - name: Publish the layer
-      aws_lambda_layer:
-        name: "{{ name }}"
-        state: present
-        path: "{{ tempdir.path }}/layer.zip"
-        bucket: "{{ bucket }}"
-        object_key: "{{ object_key }}"
-      register: lambda_layer
-
-    - name: Register that a deployment occurred
-      set_fact:
-        aws_lambda_dependency_layer_deployed: true
+- name: Deploy the layer
+  when: mode == 'deploy' and not layer.found and state == 'present'
+  include_tasks: deploy.yml
 
 - name: Look up the image again
   aws_layer_search:

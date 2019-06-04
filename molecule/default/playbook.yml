@@ -15,6 +15,7 @@
         name: "temp-layer-{{ temp_suffix }}"
         state: present
         context: ./tests/sample-data/ruby2.5
+        output: "{{ molecule_ephemeral_directory }}/build"
         runtime: ruby2.5
         bucket: "temp-bucket-{{ temp_suffix }}"
         object_key: layer.zip

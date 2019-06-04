@@ -1,0 +1,27 @@
+---
+- name: Build the Docker image with the dependencies bundled in
+  docker_image:
+    source: build
+    state: present
+    force_tag: true
+    name: "temp-lambda-image-{{ name }}"
+    build:
+      path: "{{ context }}"
+      pull: true
+      dockerfile: "{{ role_path }}/runtimes/{{ runtime }}/Dockerfile"
+
+- name: Copy the layer contents to the output directory
+  docker_container:
+    name: "temp-lambda-container-{{ name }}"
+    image: "temp-lambda-image-{{ name }}"
+    state: started
+    command: cp /layer.zip /mnt/{{ layer_filename }}
+    cleanup: true
+    volumes:
+      - "{{ output }}:/mnt"
+  changed_when: false
+
+- name: Register that a build occurred
+  set_fact:
+    aws_lambda_dependency_layer_built: true
+    aws_lambda_dependency_layer_zip: "{{ output }}/{{ layer_filename }}"

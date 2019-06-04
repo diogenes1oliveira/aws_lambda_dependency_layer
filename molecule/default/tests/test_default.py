@@ -1,3 +1,4 @@
+from base64 import b64encode
 from contextlib import ExitStack
 import logging
 import json
@@ -143,6 +144,8 @@ def test_exported_variables():
 
     assert not response.get('LayerVersions', [])
 
+    LOGGER.info('Checking the variables')
+
     with open(os.path.join(get_temp_path(), 'role-variables-side-effects-present.json')) as fp:
         vars_presence = json.load(fp)
     with open(os.path.join(get_temp_path(), 'role-variables-side-effects-absent.json')) as fp:
@@ -151,7 +154,10 @@ def test_exported_variables():
         vars_presence_check = json.load(fp)
     with open(os.path.join(get_temp_path(), 'role-variables-check-absent.json')) as fp:
         vars_absence_check = json.load(fp)
+    with open(os.path.join(get_temp_path(), 'role-variables-build.json')) as fp:
+        vars_build = json.load(fp)
 
+    LOGGER.info('Checking the state')
     assert vars_presence['aws_lambda_dependency_layer_name'] == layer_name
     assert vars_absence['aws_lambda_dependency_layer_name'] == layer_name
     assert vars_presence['aws_lambda_dependency_layer_state'] == 'present'
@@ -166,6 +172,26 @@ def test_exported_variables():
         'aws_lambda_dependency_layer_version_arn', None)
 
     assert vars_presence_check['aws_lambda_dependency_layer_state'] == 'present'
-    assert not vars_presence_check['aws_lambda_dependency_layer_deployed']
     assert vars_absence_check['aws_lambda_dependency_layer_state'] == 'absent'
+    assert vars_build['aws_lambda_dependency_layer_state'] == 'absent'
+
+    LOGGER.info('Checking the deployment')
+    assert not vars_presence_check['aws_lambda_dependency_layer_deployed']
     assert not vars_absence_check['aws_lambda_dependency_layer_deployed']
+    assert not vars_build['aws_lambda_dependency_layer_deployed']
+
+    LOGGER.info('Checking the bundle ZIP variable')
+    assert vars_presence['aws_lambda_dependency_layer_zip']
+    assert not vars_presence_check['aws_lambda_dependency_layer_zip']
+    assert not vars_absence['aws_lambda_dependency_layer_zip']
+    assert not vars_absence_check['aws_lambda_dependency_layer_zip']
+    assert vars_build['aws_lambda_dependency_layer_zip']
+
+    LOGGER.info('Checking the bundle ZIP contents')
+    zip_build = vars_build['zip_after_build']['content']
+    zip_deploy = vars_presence['zip_after_deploy']['content']
+
+    with open(vars_presence['aws_lambda_dependency_layer_zip'], 'rb') as fp:
+        content = b64encode(fp.read()).decode('ascii')
+        assert zip_build == content
+        assert zip_deploy == content

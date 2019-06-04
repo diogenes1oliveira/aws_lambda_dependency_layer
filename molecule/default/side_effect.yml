@@ -5,9 +5,49 @@
 
   vars:
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    layer_filename: layer.zip
 
   tasks:
     - include_tasks: assure-dependencies.yml
+
+    - name: Clean up the build directory
+      file:
+        path: "{{ molecule_ephemeral_directory }}/build"
+        state: "{{ item }}"
+      with_items:
+        - absent
+        - directory
+
+    - name: Just build the image
+      include_role:
+        name: aws_lambda_dependency_layer
+      vars:
+        name: "temp-layer-2-{{ temp_suffix }}"
+        state: present
+        mode: build
+        context: ./tests/sample-data/ruby2.5
+        output: "{{ molecule_ephemeral_directory }}/build"
+        runtime: ruby2.5
+
+    - name: Fetch the ZIP after build mode
+      no_log: true
+      slurp:
+        path: "{{ molecule_ephemeral_directory }}/build/{{ layer_filename }}"
+      register: zip_after_build
+
+    - name: Save the exported variables from the build
+      no_log: true
+      copy:
+        content: "{{ hostvars[inventory_hostname] | to_json }}"
+        dest: "{{ molecule_ephemeral_directory }}/role-variables-build.json"
+
+    - name: Clean up the build directory
+      file:
+        path: "{{ molecule_ephemeral_directory }}/build"
+        state: "{{ item }}"
+      with_items:
+        - absent
+        - directory
 
     - name: Deploy the image
       include_role:
@@ -16,11 +56,19 @@
         name: "temp-layer-2-{{ temp_suffix }}"
         state: present
         context: ./tests/sample-data/ruby2.5
+        output: "{{ molecule_ephemeral_directory }}/build"
         runtime: ruby2.5
         bucket: "temp-bucket-{{ temp_suffix }}"
         object_key: layer-2.zip
 
+    - name: Fetch the ZIP after deploy mode
+      no_log: true
+      slurp:
+        path: "{{ molecule_ephemeral_directory }}/build/{{ layer_filename }}"
+      register: zip_after_deploy
+
     - name: Save the exported variables from the deployment
+      no_log: true
       copy:
         content: "{{ hostvars[inventory_hostname] | to_json }}"
         dest: "{{ molecule_ephemeral_directory }}/role-variables-side-effects-present.json"
@@ -31,9 +79,10 @@
       vars:
         name: "temp-layer-2-{{ temp_suffix }}"
         context: ./tests/sample-data/ruby2.5
-        check_only: true
+        mode: check
 
     - name: Save the checked variables after deployment
+      no_log: true
       copy:
         content: "{{ hostvars[inventory_hostname] | to_json }}"
         dest: "{{ molecule_ephemeral_directory }}/role-variables-check-present.json"
@@ -46,6 +95,7 @@
         state: absent
 
     - name: Save the exported variables after undeployment
+      no_log: true
       copy:
         content: "{{ hostvars[inventory_hostname] | to_json }}"
         dest: "{{ molecule_ephemeral_directory }}/role-variables-side-effects-absent.json"
@@ -56,9 +106,11 @@
       vars:
         name: "temp-layer-2-{{ temp_suffix }}"
         context: ./tests/sample-data/ruby2.5
-        check_only: true
+        output: "{{ molecule_ephemeral_directory }}/build"
+        mode: check
 
     - name: Save the checked variables after undeployment
+      no_log: true
       copy:
         content: "{{ hostvars[inventory_hostname] | to_json }}"
         dest: "{{ molecule_ephemeral_directory }}/role-variables-check-absent.json"
