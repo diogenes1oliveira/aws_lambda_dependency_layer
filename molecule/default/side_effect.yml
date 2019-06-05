@@ -11,12 +11,14 @@
     - include_tasks: assure-dependencies.yml
 
     - name: Clean up the build directory
-      file:
-        path: "{{ molecule_ephemeral_directory }}/build"
-        state: "{{ item }}"
-      with_items:
-        - absent
-        - directory
+      docker_container:
+        name: "temp-lambda-container-cleanup"
+        image: alpine
+        state: started
+        auto_remove: true
+        command: rm -rf /mnt/*
+        volumes:
+          - "{{ molecule_ephemeral_directory }}/build:/mnt"
 
     - name: Just build the image
       include_role:
@@ -42,12 +44,14 @@
         dest: "{{ molecule_ephemeral_directory }}/role-variables-build.json"
 
     - name: Clean up the build directory
-      file:
-        path: "{{ molecule_ephemeral_directory }}/build"
-        state: "{{ item }}"
-      with_items:
-        - absent
-        - directory
+      docker_container:
+        name: "temp-lambda-container-cleanup"
+        image: alpine
+        state: started
+        auto_remove: true
+        command: rm -rf /mnt/*
+        volumes:
+          - "{{ molecule_ephemeral_directory }}/build:/mnt"
 
     - name: Deploy the image
       include_role:

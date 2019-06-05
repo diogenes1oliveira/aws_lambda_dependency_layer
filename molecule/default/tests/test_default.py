@@ -1,4 +1,4 @@
-from base64 import b64encode
+from base64 import b64encode, b64decode
 from contextlib import ExitStack
 import logging
 import json
@@ -8,6 +8,8 @@ import time
 from zipfile import ZipFile
 
 import boto3
+import pytest
+
 
 from common import log_call
 
@@ -19,7 +21,7 @@ MY_PATH = os.path.dirname(os.path.abspath(__file__))
 def get_temp_path():
     return os.getenv(
         'MOLECULE_EPHEMERAL_DIRECTORY',
-        '/tmp/molecule/lambda-dependency-layer/default/',
+        '/tmp/molecule/aws_lambda_dependency_layer/default/',
     )
 
 
@@ -95,6 +97,7 @@ def test_layer_deployment(iam_role):
                     Runtime='ruby2.5',
                     Handler='sample.handler',
                     Publish=True,
+                    Timeout=30,
                     Code={
                         'S3Bucket': bucket_name,
                         'S3Key': object_key,
@@ -118,13 +121,17 @@ def test_layer_deployment(iam_role):
         )
         invocation = lambda_client.invoke(
             FunctionName=function_name,
-            LogType='None',
+            LogType='Tail',
         )
         payload = invocation['Payload'].read().decode('utf-8')
         LOGGER.info('payload = %s', payload)
-
+        LOGGER.info('execution log = %s', b64decode(
+            invocation['LogResult']).decode('utf-8'))
         response = json.loads(json.loads(payload)['body'])
+        LOGGER.info('testing rails')
         assert response['rails'] == '5.2.3'
+        LOGGER.info('testing sinatra')
+        assert response['sinatra'] == '2.0.5'
 
 
 def test_exported_variables():

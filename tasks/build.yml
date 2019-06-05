@@ -4,6 +4,7 @@
     source: build
     state: present
     force_tag: true
+    force_source: true
     name: "temp-lambda-image-{{ name }}"
     build:
       path: "{{ context }}"
@@ -15,11 +16,11 @@
     name: "temp-lambda-container-{{ name }}"
     image: "temp-lambda-image-{{ name }}"
     state: started
-    command: cp /layer.zip /mnt/{{ layer_filename }}
+    restart: true
     cleanup: true
+    command: cp /layer.zip /mnt/{{ layer_filename }}
     volumes:
       - "{{ output }}:/mnt"
-  changed_when: false
 
 - name: Register that a build occurred
   set_fact:
