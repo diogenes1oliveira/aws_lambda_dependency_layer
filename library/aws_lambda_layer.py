@@ -39,6 +39,7 @@ version_added: "2.4"
 
 description:
     - Deploy and publish versions of AWS Lambda Layers
+    - A deployment only occurs
 
 options:
     bucket:

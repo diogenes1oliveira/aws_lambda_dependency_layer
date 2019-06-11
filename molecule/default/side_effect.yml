@@ -20,12 +20,18 @@
         volumes:
           - "{{ molecule_ephemeral_directory }}/build:/mnt"
 
+    - name: Undeploy the image
+      include_role:
+        name: aws_lambda_dependency_layer
+      vars:
+        name: "temp-layer-2-{{ temp_suffix }}"
+        state: absent
+
     - name: Just build the image
       include_role:
         name: aws_lambda_dependency_layer
       vars:
         name: "temp-layer-2-{{ temp_suffix }}"
-        state: present
         mode: build
         context: ./tests/sample-data/ruby2.5
         output: "{{ molecule_ephemeral_directory }}/build"

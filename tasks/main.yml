@@ -1,6 +1,9 @@
 ---
 # tasks/main
 
+- name: Check if the variables are well defined
+  include_tasks: vars.yml
+
 - name: Check if the image already exists
   aws_layer_search:
     name: "{{ name }}"

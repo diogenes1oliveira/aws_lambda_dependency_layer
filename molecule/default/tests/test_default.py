@@ -8,7 +8,6 @@ import time
 from zipfile import ZipFile
 
 import boto3
-import pytest
 
 
 from common import log_call

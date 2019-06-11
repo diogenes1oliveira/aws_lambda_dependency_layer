@@ -1,0 +1,36 @@
+---
+- name: Check if the layer name is set
+  assert:
+    that:
+      - name | d(False, True)
+
+- name: Check if the S3 variables are set
+  assert:
+    that:
+      - bucket | d(False, True)
+      - object_key | d(False, True)
+  when: mode == 'deploy' and state == 'present'
+
+- name: Check if the context is set
+  assert:
+    that:
+      - context | d(False, True)
+  when: mode == 'check' or state == 'present'
+
+- name: check mode
+  debug:
+    var: mode
+
+- name: check state
+  debug:
+    var: state
+
+- name: check output
+  debug:
+    var: output
+
+- name: Check if the output directory is set
+  assert:
+    that:
+      - output | d(False, True)
+  when: mode == 'build' or (mode == 'deploy' and state == 'present')
