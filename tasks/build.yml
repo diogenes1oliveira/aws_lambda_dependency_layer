@@ -18,11 +18,15 @@
     state: started
     restart: true
     cleanup: true
-    command: cp /layer.zip /mnt/{{ layer_filename }}
+    recreate: true
+    entrypoint:
+      - /bin/bash
+      - -c
+      - "'cp /{{ layer_filename | quote }} /mnt/{{ layer_filename | quote }} && ls /mnt'"
     volumes:
-      - "{{ output }}:/mnt"
+      - "{{ output }}:/mnt/"
 
 - name: Register that a build occurred
   set_fact:
     aws_lambda_dependency_layer_built: true
-    aws_lambda_dependency_layer_zip: "{{ output }}/{{ layer_filename }}"
+    aws_lambda_dependency_layer_zip: "{{ output }}/{{ layer_filename | quote }}"

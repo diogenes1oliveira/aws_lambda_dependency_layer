@@ -104,6 +104,11 @@ def test_layer_deployment(iam_role):
                     Layers=[
                         layer_version_arn,
                     ],
+                    Environment={
+                        'Variables': {
+                            'BUNDLE_GEMFILE': '/opt/Gemfile',
+                        },
+                    },
                 )
             except lambda_client.exceptions.ClientError as e:
                 LOGGER.error('Lambda error: %s', str(e))

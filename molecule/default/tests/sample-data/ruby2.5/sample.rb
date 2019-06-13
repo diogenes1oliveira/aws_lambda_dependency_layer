@@ -1,5 +1,6 @@
-require 'aws_lambda_dependency_layer_setup/deployment'
+# frozen_string_literal: true
 
+require 'bundler/setup'
 require 'json'
 require 'rails'
 require 'sinatra'
@@ -7,9 +8,9 @@ require 'sinatra'
 def handler(event:, context:)
   {
     statusCode: 200,
-    body: JSON.generate({
+    body: JSON.generate(
       rails: Rails::VERSION::STRING,
-      sinatra: Sinatra::VERSION,
-    }),
+      sinatra: Sinatra::VERSION
+    )
   }
 end
