@@ -1,6 +1,8 @@
 FROM lambci/lambda:build-ruby2.5
 LABEL maintainer="Diógenes Oliveira <diogenes@rcstecnologia.com.br>"
 
+ARG BUNDLE_FLAGS="--without development"
+
 # Files to be included in the bundle
 # Assure to set BUNDLE_GEMFILE=/opt/Gemfile
 ENV FILES='ruby/ Gemfile Gemfile.lock .bundle'
@@ -11,11 +13,10 @@ WORKDIR /opt/
 COPY ./Gemfile ./Gemfile.lock ./
 
 # Effectively install the gems
-RUN bundle install --deployment --path=.
+RUN bundle install --deployment --path=. ${BUNDLE_FLAGS}
 
 # Clean up the cache
 RUN rm -rf ruby/2.5.0/cache
-
 
 # Check if the size is smaller than AWS's limits
 RUN \
