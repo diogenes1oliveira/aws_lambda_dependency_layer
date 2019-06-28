@@ -1,5 +1,6 @@
 from base64 import b64encode, b64decode
 from contextlib import ExitStack
+from io import BytesIO
 import logging
 import json
 import os
@@ -202,7 +203,16 @@ def test_exported_variables():
     zip_build = vars_build['zip_after_build']['content']
     zip_deploy = vars_presence['zip_after_deploy']['content']
 
+    def get_structure(content):
+        fp = BytesIO(b64decode(content))
+        dirs = set()
+        with ZipFile(fp) as bundle:
+            for item in bundle.infolist():
+                if item.is_dir():
+                    dirs.add(item.filename)
+        return dirs
+
     with open(vars_presence['aws_lambda_dependency_layer_zip'], 'rb') as fp:
         content = b64encode(fp.read()).decode('ascii')
-        assert zip_build == content
-        assert zip_deploy == content
+        assert get_structure(zip_build) == get_structure(content)
+        assert get_structure(zip_deploy) == get_structure(content)

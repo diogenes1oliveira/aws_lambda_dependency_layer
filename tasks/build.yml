@@ -5,16 +5,17 @@
     state: present
     force_tag: true
     force_source: true
-    name: "temp-lambda-image-{{ name }}"
+    name: "aws-lambda-dependency-layer-temp-image"
     build:
       path: "{{ context }}"
       pull: true
+      nocache: true
       dockerfile: "{{ role_path }}/runtimes/{{ runtime }}/Dockerfile"
 
 - name: Copy the layer contents to the output directory
   docker_container:
     name: "temp-lambda-container-{{ name }}"
-    image: "temp-lambda-image-{{ name }}"
+    image: "aws-lambda-dependency-layer-temp-image"
     state: started
     restart: true
     cleanup: true
