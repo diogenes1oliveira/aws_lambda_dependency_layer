@@ -6,6 +6,8 @@
     path: "{{ output }}/{{ layer_filename }}"
     bucket: "{{ bucket }}"
     object_key: "{{ object_key }}"
+    runtimes:
+      - "{{ runtime }}"
   register: lambda_layer
 
 - name: Register that a deployment occurred

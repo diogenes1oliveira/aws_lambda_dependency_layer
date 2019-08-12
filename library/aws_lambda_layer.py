@@ -63,6 +63,10 @@ options:
             - Path to the ZIP file in the filesystem
             - Required if state == 'present'
         default: None
+    runtimes:
+        description:
+            - List of supported runtimes
+        default: None
     state:
         description:
             - Whether to create or destroy the Lambda Layer
@@ -258,11 +262,12 @@ def destroy_layer(name, lambda_client=None):
     return bool(versions)
 
 
-def manage_lambda_layer(name, bucket, object_key, object_version, path, state, metadata='sha256'):
+def manage_lambda_layer(name, bucket, object_key, object_version, path, state, runtimes=None, metadata='sha256'):
     result = dict(
         changed=False,
     )
     connection_args = {}
+    runtimes = runtimes or []
 
     if os.getenv('LAMBDA_URL', None):
         connection_args['endpoint_url'] = os.environ['LAMBDA_URL']
@@ -279,6 +284,7 @@ def manage_lambda_layer(name, bucket, object_key, object_version, path, state, m
         result['version'] = layer['Version']
         result['version_arn'] = layer['LayerVersionArn']
         result['version_checksum'] = layer['Content']['CodeSha256']
+        result['runtimes'] = layer.get('CompatibleRuntimes', []) or []
         if state == 'absent':
             result['changed'] = True
             destroy_layer(name, lambda_client)
@@ -301,7 +307,7 @@ def manage_lambda_layer(name, bucket, object_key, object_version, path, state, m
             path, bucket, object_key, local_checksum, metadata=metadata)
         result['changed'] = True
 
-    if not layer or result['version_checksum'] != local_checksum:
+    if not layer or result['version_checksum'] != local_checksum or result['runtimes'] != runtimes:
         options = {
             'S3Bucket': bucket,
             'S3Key': object_key,
@@ -310,8 +316,9 @@ def manage_lambda_layer(name, bucket, object_key, object_version, path, state, m
             options['S3ObjectVersion'] = object_version
 
         layer = lambda_client.publish_layer_version(
-            LayerName=name,
+            **({'CompatibleRuntimes': runtimes} if runtimes else {}),
             Content=options,
+            LayerName=name,
         )
         result['changed'] = True
         result['arn'] = layer['LayerArn']
@@ -334,6 +341,7 @@ def run_module():
         region=dict(type='str', default=(
             os.getenv('AWS_DEFAULT_REGION', '') or None
         ), aliases=['aws_region']),
+        runtimes=dict(type='list', default=None),
         s3_endpoint_url=dict(type='str', default=(
             os.getenv('S3_URL', '') or None
         )),
@@ -371,6 +379,7 @@ def run_module():
                 object_key=module.params['object_key'],
                 object_version=(module.params['object_version'] or None),
                 path=module.params['path'],
+                runtimes=module.params['runtimes'] or [],
             )
         )
     except Exception as e:
