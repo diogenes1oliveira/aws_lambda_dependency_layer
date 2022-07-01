@@ -7,7 +7,7 @@ verify_ssl = true
 python_version = "3.7"
 
 [packages]
-ansible = "~=2.8"
+ansible = "~=4.2"
 boto3 = "~=1.9"
 docker = "~=4.0"
 
